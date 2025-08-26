@@ -1,0 +1,12 @@
+filters:
+  trl: 7
+  regions: ["MA", "CA"]
+  fatal_flaws:
+    - expired_deadline
+    - nonprofit_only
+    - li_ion_ban
+    - impossible_match
+scoring:
+  relevance: [0, 1, 3, 5]
+  eqore_fit: [1, 2, 3, 4, 5]
+  ease: [1, 2, 3, 4, 5]
