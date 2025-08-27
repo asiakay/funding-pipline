@@ -6,11 +6,6 @@ pip install -r requirements.txt
 python src/pipeline.py
 ```
 
-The pipeline will attempt to download the latest funding opportunities from
-the Grants.gov `search2` API (``https://www.grants.gov/api/common/search2``).
-If the download fails (e.g., no network access), it will fall back to the
-previously cached `data/master.csv` file.
-
 ## Outputs
 - outputs/CleanTable.csv
 - outputs/Dirty.csv
