@@ -5,6 +5,7 @@ from src.build_deck import build_deck
 from src.build_pdf import build_pdf
 
 
+
 def main(argv=None):
     """Run the funding pipeline on ``data/master.csv``.
 
@@ -17,11 +18,16 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="EQORE funding pipeline")
     parser.add_argument("--deck", action="store_true", help="generate PowerPoint deck")
     parser.add_argument("--pdf", action="store_true", help="generate one-pager PDF")
-    args = parser.parse_args(argv)
 
-    df = pd.read_csv("data/master.csv")
 
-    clean, dirty, oos = triage_and_score(df)
+    required = {"Relevance", "EQORE Fit", "Ease of Use"}
+    if required.issubset(df.columns):
+        clean, dirty, oos = triage_and_score(df)
+    else:
+        # Without scoring columns, simply dump the raw data and exit early.
+        df.to_csv("outputs/GrantsRaw.csv", index=False)
+        print("Missing scoring columns; wrote outputs/GrantsRaw.csv")
+        return
 
     clean.to_csv("outputs/CleanTable.csv", index=False)
     dirty.to_csv("outputs/DirtyTable.csv", index=False)
