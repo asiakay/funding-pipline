@@ -1,15 +1,10 @@
-"""Utilities for downloading opportunity data from Grants.gov."""
+
 
 from __future__ import annotations
 
 import pandas as pd
 import requests
 
-DEFAULT_URL = "https://www.grants.gov/grantsws/rest/opportunities/search"
-
-
-def fetch_grants(max_results: int = 50, outfile: str = "data/master.csv") -> pd.DataFrame:
-    """Fetch funding opportunities from Grants.gov and save them to ``outfile``.
 
     Parameters
     ----------
@@ -36,8 +31,7 @@ def fetch_grants(max_results: int = 50, outfile: str = "data/master.csv") -> pd.
     response.raise_for_status()
 
     data = response.json()
-    # The API returns a list of opportunities under the ``oppHits`` key.
-    opportunities = data.get("oppHits", [])
+
     df = pd.DataFrame(opportunities)
     df.to_csv(outfile, index=False)
     return df
