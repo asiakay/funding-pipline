@@ -3,14 +3,20 @@
 ## How to Run
 ```bash
 pip install -r requirements.txt
-python -m src.pipeline [--deck] [--pdf]
+python -m src.pipeline [--deck] [--pdf] [--keyword "energy efficiency"]
 ```
 
-The script reads `data/master.csv`, scores each opportunity, and
-splits the results into Clean, Dirty, and Out‑of‑Scope tables under the
-`outputs/` folder. The Clean table keeps the top 35 scored opportunities.
-Use `--deck` to build a PowerPoint deck and `--pdf` for a simple
-one‑pager PDF of the top opportunities.
+By default the pipeline reads `data/master.csv`, scores each opportunity,
+and splits the results into Clean, Dirty, and Out‑of‑Scope tables under
+the `outputs/` folder. The Clean table keeps the top 35 scored
+opportunities. Use `--deck` to build a PowerPoint deck and `--pdf` for a
+simple one‑pager PDF of the top opportunities.
+
+If `--keyword` is supplied, the script pulls opportunities from the
+public Grants.gov API using that keyword instead of reading
+`data/master.csv`. When the downloaded data does not contain scoring
+columns, it is written to `outputs/GrantsRaw.csv` for manual review and
+no scoring/triage is performed.
 
 ## Outputs
 - `outputs/CleanTable.csv` (top 35)
