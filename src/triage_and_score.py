@@ -2,8 +2,6 @@ import pandas as pd
 from datetime import datetime
 from typing import Tuple
 
-CLEAN_LIMIT = 35
-
 
 def _parse_match(value: object) -> float:
     """Convert a match percentage string to a float.
@@ -71,13 +69,11 @@ def triage_and_score(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.D
     candidates = df[(~relevance_zero) & (~df["fatal"])]
     candidates = candidates.sort_values("Weighted Score", ascending=False)
 
-    clean = candidates.head(CLEAN_LIMIT).reset_index(drop=True)
+
     clean["Rank"] = range(1, len(clean) + 1)
     cols = ["Rank"] + [c for c in clean.columns if c != "Rank"]
     clean = clean[cols]
 
-    # Remaining valid candidates beyond the clean limit
-    extra = candidates.iloc[CLEAN_LIMIT:]
     dirty_from_fatal = df[(~relevance_zero) & df["fatal"]]
     dirty = pd.concat([extra, dirty_from_fatal], ignore_index=True).reset_index(drop=True)
 

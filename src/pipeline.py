@@ -3,7 +3,7 @@ import pandas as pd
 from src.triage_and_score import triage_and_score
 from src.build_deck import build_deck
 from src.build_pdf import build_pdf
-from src.fetch_grants import fetch_grants
+
 
 
 def main(argv=None):
@@ -18,16 +18,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="EQORE funding pipeline")
     parser.add_argument("--deck", action="store_true", help="generate PowerPoint deck")
     parser.add_argument("--pdf", action="store_true", help="generate one-pager PDF")
-    parser.add_argument(
-        "--keyword",
-        help="fetch opportunities from Grants.gov using the given keyword",
-    )
-    args = parser.parse_args(argv)
 
-    if args.keyword:
-        df = fetch_grants(args.keyword)
-    else:
-        df = pd.read_csv("data/master.csv")
 
     required = {"Relevance", "EQORE Fit", "Ease of Use"}
     if required.issubset(df.columns):
