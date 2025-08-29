@@ -33,9 +33,9 @@ def main(argv=None):
 
     # Excel workbook with all tables
     with pd.ExcelWriter("outputs/Tables.xlsx", engine="openpyxl") as xls:
-        clean.to_excel(xls, "Clean", index=False)
-        dirty.to_excel(xls, "Dirty", index=False)
-        oos.to_excel(xls, "OutOfScope", index=False)
+        clean.to_excel(xls, sheet_name="Clean", index=False)
+        dirty.to_excel(xls, sheet_name="Dirty", index=False)
+        oos.to_excel(xls, sheet_name="OutOfScope", index=False)
 
     if args.deck:
         try:

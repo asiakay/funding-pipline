@@ -49,3 +49,7 @@ Small Grants Program,U.S. Mission to the United Nations,https://www.grants.gov/w
 Atlanta FY 2021 &ndash; FY 2023 EDA Planning and Local Technical Assistance,Department of Commerce,https://www.grants.gov/web/grants/view-opportunity.html?oppId=332052,03/15/2021,,posted
 Denver FY 2021 &ndash; FY 2023 EDA Planning and Local Technical Assistance,Department of Commerce,https://www.grants.gov/web/grants/view-opportunity.html?oppId=332126,03/15/2021,,posted
 Austin FY 2021 &ndash; FY 2023 EDA Planning and Local Technical Assistance,Department of Commerce,https://www.grants.gov/web/grants/view-opportunity.html?oppId=332137,03/15/2021,,posted
+
+
+
+python src/fetch_grants.py "battery" --max 50 --outfile data/grants_raw.csv --debug
