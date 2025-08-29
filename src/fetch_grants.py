@@ -10,11 +10,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List
 
+import logging
+import re
+from pathlib import Path
+
 import pandas as pd
 import requests
 
 # Grants.gov "search2" endpoint used by the curl commands in the project
 DEFAULT_URL = "https://api.grants.gov/v1/api/search2"
+# Preferred human-facing detail page for a single opportunity
+DETAIL_URL = "https://www.grants.gov/search-results-detail"
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -31,11 +39,7 @@ class GrantHit:
     def to_row(self) -> dict:
         """Convert the hit into a row compatible with downstream CSV usage."""
 
-        link = (
-            f"https://www.grants.gov/web/grants/view-opportunity.html?oppId={self.id}"
-            if self.id
-            else None
-        )
+        link = f"{DETAIL_URL}/{self.id}" if self.id else None
         return {
             "Grant Name": self.title,
             "Sponsor": self.agency,
@@ -46,7 +50,7 @@ class GrantHit:
         }
 
 
-def fetch_grants(keyword: str, max_results: int = 50) -> pd.DataFrame:
+def fetch_grants(keyword: str, max_results: int = 100) -> pd.DataFrame:
     """Fetch opportunity data from Grants.gov.
 
     Parameters
@@ -67,15 +71,24 @@ def fetch_grants(keyword: str, max_results: int = 50) -> pd.DataFrame:
         "keyword": keyword,
         "oppStatuses": "posted|forecasted",
         "startRecordNum": 1,
-        "maximumRecords": max_results,
+        # Grants.gov expects 'rows' not 'maximumRecords'
+        "rows": max_results,
     }
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
+    logger.debug("POST %s payload=%s", DEFAULT_URL, payload)
     response = requests.post(DEFAULT_URL, json=payload, headers=headers, timeout=30)
     response.raise_for_status()
     data = response.json()
+    logger.debug("Status %s; parsed JSON keys: %s", response.status_code, list(data.keys()))
+    
+    # Results may be nested under top-level 'data'
+    container = data
+    if "oppHits" not in container and isinstance(data.get("data"), dict):
+        logger.debug("Using nested 'data' container for oppHits")
+        container = data["data"]
     hits: List[GrantHit] = [
         GrantHit(
             title=hit.get("title"),
@@ -85,10 +98,11 @@ def fetch_grants(keyword: str, max_results: int = 50) -> pd.DataFrame:
             close_date=hit.get("closeDate"),
             status=hit.get("oppStatus"),
         )
-        for hit in data.get("oppHits", [])
+        for hit in container.get("oppHits", [])
     ]
 
     rows = [h.to_row() for h in hits]
+    logger.debug("Constructed %d rows for DataFrame", len(rows))
     return pd.DataFrame(rows)
 
 
@@ -102,16 +116,39 @@ def main() -> None:  # pragma: no cover - convenience CLI
     parser.add_argument("--max", type=int, default=50, help="maximum records to pull")
     parser.add_argument(
         "--outfile",
-        default="data/grants_raw.csv",
-        help="where to write the downloaded CSV",
+        default=None,
+        help="output CSV path; defaults to data/grants_raw_{keyword}.csv",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="enable verbose debug logging",
     )
     args = parser.parse_args()
+    
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
+        logger.debug("Debug logging enabled")
+
+    # Determine output path; auto-name by keyword when not provided
+    if args.outfile is None:
+        slug = re.sub(r"[^a-z0-9]+", "-", args.keyword.lower()).strip("-")
+        outfile = f"data/grants_raw_{slug}.csv"
+    else:
+        outfile = args.outfile
+    outpath = Path(outfile)
+    outpath.parent.mkdir(parents=True, exist_ok=True)
 
     df = fetch_grants(args.keyword, args.max)
-    df.to_csv(args.outfile, index=False)
-    print(f"Wrote {len(df)} rows to {args.outfile}")
+    # Choose delimiter by extension: use tab for .tsv/.tab to make URLs click-friendly in editors
+    ext = outpath.suffix.lower()
+    sep = "\t" if ext in {".tsv", ".tab"} else ","
+    if args.debug:
+        logger.debug("Writing file with sep=%r based on extension %s", sep, ext)
+    df.to_csv(outpath, index=False, sep=sep)
+    print(f"Wrote {len(df)} rows to {outpath}")
+
 
 
 if __name__ == "__main__":  # pragma: no cover - script mode
     main()
-

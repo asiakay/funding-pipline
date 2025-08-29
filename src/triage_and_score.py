@@ -4,11 +4,7 @@ from typing import Tuple
 
 
 def _parse_match(value: object) -> float:
-    """Convert a match percentage string to a float.
-
-    Examples of accepted inputs: "30%", "30", "30.0", "Var.", "Var".
-    Non-numeric entries return ``None``.
-    """
+    """Convert a match percentage string to a float."""
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
     text = str(value).strip().replace('%', '').replace(',', '')
@@ -21,28 +17,17 @@ def _parse_match(value: object) -> float:
 
 
 def triage_and_score(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Split a master opportunity table into Clean/Dirty/Out-of-Scope sets.
-
-    Parameters
-    ----------
-    df:
-        DataFrame loaded from ``data/master.csv``.
-
-    Returns
-    -------
-    tuple(pd.DataFrame, pd.DataFrame, pd.DataFrame)
-        Clean, Dirty, and Out-of-Scope tables.
-    """
+    """Split a master opportunity table into Clean/Dirty/Out-of-Scope sets."""
     df = df.copy()
 
-    # --- Normalize numeric scoring columns ---
+    # Normalize numeric scoring columns
     for col in ["Relevance", "EQORE Fit", "Ease of Use"]:
         df[col] = pd.to_numeric(df.get(col), errors="coerce").fillna(0)
 
-    # Compute weighted score per spec
+    # Weighted score
     df["Weighted Score"] = df["Relevance"] * df["EQORE Fit"] * (df["Ease of Use"] / 5)
 
-    # --- Parse deadlines and match % ---
+    # Parse deadlines and match %
     df["Deadline"] = pd.to_datetime(df.get("Deadline"), errors="coerce")
     today = pd.Timestamp.today().normalize()
     if "Match %" in df.columns:
@@ -50,34 +35,31 @@ def triage_and_score(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.D
     else:
         df["MatchNumeric"] = None
 
-    # --- Fatal flaw filters ---
+    # Fatal flaw filters
     fatal = pd.Series(False, index=df.index)
-    # Deadline passed
-    fatal |= df["Deadline"].notna() & (df["Deadline"] < today)
-    # Match requirement too high
-    fatal |= df["MatchNumeric"].notna() & (df["MatchNumeric"] >= 33)
-    # Missing critical columns
-    for col in ["Grant Name", "Sponsor", "Link"]:
+    fatal |= df["Deadline"].notna() & (df["Deadline"] < today)           # deadline passed
+    fatal |= df["MatchNumeric"].notna() & (df["MatchNumeric"] >= 33)     # high match
+    for col in ["Grant Name", "Sponsor", "Link"]:                        # missing critical fields
         if col in df.columns:
             fatal |= df[col].isna()
     df["fatal"] = fatal
 
-    # --- Categorisation ---
+    # Categorization
     relevance_zero = df["Relevance"] == 0
-    out_of_scope = df[relevance_zero].copy()
+    out_of_scope = df[relevance_zero].copy().reset_index(drop=True)
 
-    candidates = df[(~relevance_zero) & (~df["fatal"])]
-    candidates = candidates.sort_values("Weighted Score", ascending=False)
-
-
+    clean = (
+        df[(~relevance_zero) & (~df["fatal"])]
+        .sort_values("Weighted Score", ascending=False)
+        .copy()
+        .reset_index(drop=True)
+    )
     clean["Rank"] = range(1, len(clean) + 1)
+    # Put Rank first if present
     cols = ["Rank"] + [c for c in clean.columns if c != "Rank"]
     clean = clean[cols]
 
-    dirty_from_fatal = df[(~relevance_zero) & df["fatal"]]
-    dirty = pd.concat([extra, dirty_from_fatal], ignore_index=True).reset_index(drop=True)
-
-    out_of_scope = out_of_scope.reset_index(drop=True)
+    dirty = df[(~relevance_zero) & df["fatal"]].copy().reset_index(drop=True)
 
     # Drop helper columns
     for frame in (clean, dirty, out_of_scope):
